@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAP Banestes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 p-6 font-sans">
+  <div class="max-w-4xl mx-auto space-y-6">
+    
+    <div class="bg-blue-900 text-white p-8 rounded shadow-md">
+      <h1 class="text-2xl font-bold border-b border-blue-700 pb-2">SAP - BANESTES</h1>
+      <p class="text-sm pt-2 text-blue-200">Módulo de Gerenciamento de Processos</p>
+    </div>
+
+    <div class="bg-white p-6 rounded shadow border-t-4 border-green-600">
+      <h2 class="text-gray-700 font-bold mb-4 uppercase">Novo Registro</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <input type="text" id="inId" placeholder="ID do Processo" class="border p-2 rounded w-full outline-none focus:border-green-500">
+        <input type="text" id="inCli" placeholder="Nome do Cliente" class="border p-2 rounded w-full outline-none focus:border-green-500">
+        <input type="number" id="inVal" placeholder="Valor (R$)" class="border p-2 rounded w-full outline-none focus:border-green-500">
+        <button onclick="cadastrar()" class="md:col-span-3 bg-green-600 text-white py-2 font-bold hover:bg-green-700 transition">SALVAR REGISTRO</button>
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded shadow border-t-4 border-blue-900">
+      <h2 class="text-gray-700 font-bold mb-4 uppercase">Consulta de Base</h2>
+      <div class="flex gap-2 mb-6">
+        <input type="text" id="inBusca" placeholder="ID para pesquisa..." class="flex-1 border p-2 rounded outline-none focus:border-blue-900">
+        <button id="btnBuscar" onclick="buscar()" class="bg-blue-900 text-white px-8 py-2 font-bold hover:bg-blue-950 transition flex items-center gap-2">
+          <span id="spinner" class="hidden animate-spin">⌛</span>
+          BUSCAR
+        </button>
+      </div>
+
+      <div id="resBox" class="hidden opacity-0 transition-all duration-500 transform translate-y-2 bg-gray-100 p-6 rounded border border-gray-300 space-y-4">
+        <h3 class="text-lg font-bold text-gray-700 border-b pb-2">Editar Registro</h3>
+        <div class="grid grid-cols-1 gap-4 text-sm">
+          <div>
+            <label class="block text-gray-500 font-bold mb-1">Cliente:</label>
+            <input type="text" id="editCli" class="border p-2 rounded w-full outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-gray-500 font-bold mb-1">Valor (R$):</label>
+            <input type="number" id="editVal" class="border p-2 rounded w-full outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-gray-500 font-bold mb-1">Status:</label>
+            <select id="editStatus" class="border p-2 rounded w-full outline-none focus:border-blue-500 bg-white">
+              <option value="ANALISE_INICIAL">ANALISE_INICIAL</option>
+              <option value="EM_PROCESSAMENTO">EM_PROCESSAMENTO</option>
+              <option value="FINALIZADO">FINALIZADO</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button onclick="salvarAlteracoes()" class="flex-1 bg-blue-600 text-white py-2 font-bold hover:bg-blue-700">SALVAR ALTERAÇÕES</button>
+          <button onclick="abrirModalExcluir()" class="bg-red-600 text-white px-6 py-2 font-bold hover:bg-red-700">REMOVER</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalExcluir" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
+      <h3 class="text-lg font-bold mb-2">Confirmar Exclusão</h3>
+      <p class="text-gray-600 mb-6">Deseja remover o processo <span id="idParaExcluir" class="font-bold text-red-600"></span>?</p>
+      <div class="flex gap-3">
+        <button onclick="fecharModal()" class="flex-1 px-4 py-2 bg-gray-100 rounded font-bold">CANCELAR</button>
+        <button onclick="confirmarExclusao()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded font-bold">EXCLUIR</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-3"></div>
+
+  <script>
+    let idAtivo = null;
+
+    function notificar(tipo, mensagem) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgColor = tipo === 'sucesso' ? 'bg-green-600' : 'bg-red-600';
+      const icone = tipo === 'sucesso' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+
+      toast.className = `${bgColor} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 transform transition-all duration-500 translate-y-10 opacity-0 border-l-4 border-white/30`;
+      toast.innerHTML = `<i class="fas ${icone} text-xl"></i><div><div class="font-bold uppercase text-[10px] opacity-70 tracking-widest">Sistema SAP</div><div class="font-medium">${mensagem}</div></div>`;
+
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-10');
+        setTimeout(() => toast.remove(), 500);
+      }, 4000);
+    }
+
+    function cadastrar() {
+      const inId = document.getElementById('inId');
+      const inCli = document.getElementById('inCli');
+      const inVal = document.getElementById('inVal');
+
+      if(!inId.value || !inCli.value) {
+        notificar('erro', 'Preencha o ID e o Cliente!');
+        return;
+      }
+
+      const dados = { id: inId.value, cliente: inCli.value, valor: inVal.value };
+
+      google.script.run.withSuccessHandler(() => {
+        notificar('sucesso', 'Processo ' + dados.id + ' adicionado com sucesso!');
+        inId.value = ""; inCli.value = ""; inVal.value = "";
+      }).salvarNaPlanilha(dados);
+    }
+
+    function buscar() {
+      const inputBusca = document.getElementById('inBusca');
+      const id = inputBusca.value.trim();
+      const btn = document.getElementById('btnBuscar');
+      const spinner = document.getElementById('spinner');
+      const resBox = document.getElementById('resBox');
+
+      if (!id) {
+        notificar('erro', 'Por favor, digite um ID para pesquisar.');
+        inputBusca.focus();
+        return;
+      }
+
+      btn.disabled = true;
+      spinner.classList.remove('hidden');
+
+      google.script.run.withSuccessHandler(res => {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+
+        if (res) {
+          idAtivo = res.id;
+          document.getElementById('editCli').value = res.cliente;
+          document.getElementById('editVal').value = res.valor;
+          document.getElementById('editStatus').value = res.status;
+
+          resBox.classList.remove('hidden');
+          setTimeout(() => {
+            resBox.classList.remove('opacity-0', 'translate-y-2');
+            resBox.classList.add('opacity-100', 'translate-y-0');
+          }, 50);
+          notificar('sucesso', 'Processo localizado com sucesso!');
+        } else {
+          notificar('erro', 'O ID "' + id + '" não existe na base Banestes.');
+          resBox.classList.add('hidden');
+        }
+      }).buscarNoBanco(id);
+    }
+
+    function salvarAlteracoes() {
+      if(!idAtivo) {
+        notificar('erro', 'Nenhum registro selecionado.');
+        return;
+      }
+      const resBox = document.getElementById('resBox');
+      const dados = {
+        id: idAtivo,
+        cliente: document.getElementById('editCli').value,
+        valor: document.getElementById('editVal').value,
+        status: document.getElementById('editStatus').value
+      };
+
+      google.script.run.withSuccessHandler(() => {
+        resBox.classList.add('ring-4', 'ring-green-400');
+        setTimeout(() => {
+          resBox.classList.remove('ring-4', 'ring-green-400');
+          notificar('sucesso', 'Dados sincronizados com sucesso!');
+        }, 500);
+      }).atualizarNoBanco(dados);
+    }
+
+    function abrirModalExcluir() {
+      document.getElementById('idParaExcluir').innerText = idAtivo;
+      document.getElementById('modalExcluir').classList.remove('hidden');
+    }
+
+    function fecharModal() {
+      document.getElementById('modalExcluir').classList.add('hidden');
+    }
+
+    function confirmarExclusao() {
+      google.script.run.withSuccessHandler(() => {
+        fecharModal();
+        document.getElementById('resBox').classList.add('hidden');
+        notificar('sucesso', 'Registro removido da base.');
+        idAtivo = null;
+      }).excluirDoBanco(idAtivo);
+    }
+  </script>
+</body>
+</html>

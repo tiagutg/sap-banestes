@@ -1,0 +1,64 @@
+const NOME_ABA = "DADOS_PROCESSOS";
+
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index').setTitle('SAP - Banestes');
+}
+
+// 1. CADASTRAR
+function salvarNaPlanilha(dados) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NOME_ABA);
+  // Salva: ID (A), Cliente (B), Valor (F), Status (H)
+  // Nota: Deixamos colunas vazias entre elas conforme seu layout
+  const novaLinha = [dados.id, dados.cliente, "", "", "", dados.valor, "", "ANALISE_INICIAL"];
+  sheet.appendRow(novaLinha);
+  return "Sucesso";
+}
+
+// 2. BUSCAR
+function buscarNoBanco(id) {
+  const data = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NOME_ABA).getDataRange().getValues();
+  const termo = id.toString().toUpperCase().trim();
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString().toUpperCase() === termo) {
+      return {
+        id: data[i][0],
+        cliente: data[i][1], // Coluna B
+        valor: data[i][5],   // Coluna F (Índice 5)
+        status: data[i][7]   // Coluna H (Índice 7)
+      };
+    }
+  }
+  return null;
+}
+
+// 3. ATUALIZAR (O "Salvar Alterações")
+function atualizarNoBanco(dados) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NOME_ABA);
+  const data = sheet.getDataRange().getValues();
+  const idProcurado = dados.id.toString().trim().toUpperCase();
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString().trim().toUpperCase() === idProcurado) {
+      // Atualiza Coluna B (Índice 1), F (Índice 5) e H (Índice 7)
+      sheet.getRange(i + 1, 2).setValue(dados.cliente);
+      sheet.getRange(i + 1, 6).setValue(dados.valor);
+      sheet.getRange(i + 1, 8).setValue(dados.status);
+      return "Sucesso";
+    }
+  }
+  return "Erro: ID não encontrado";
+}
+
+// 4. EXCLUIR
+function excluirDoBanco(id) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NOME_ABA);
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] == id) {
+      sheet.deleteRow(i + 1);
+      return "Removido";
+    }
+  }
+}
